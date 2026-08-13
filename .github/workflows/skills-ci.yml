@@ -1,0 +1,68 @@
+name: Skills CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  skillsaw-lint:
+    name: Skillsaw Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run skillsaw lint
+        uses: docker://ghcr.io/stbenjam/skillsaw:latest
+        with:
+          args: lint --strict
+
+  skill-evals:
+    name: Skill Evals
+    runs-on: ubuntu-latest
+    needs: skillsaw-lint
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find eval files
+        id: find-evals
+        run: |
+          evals=$(find .claude/skills -name "evals.json" -type f 2>/dev/null | tr '\n' ' ')
+          if [ -z "$evals" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "No eval files found — skipping evals"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "evals=$evals" >> "$GITHUB_OUTPUT"
+            echo "Found evals: $evals"
+          fi
+
+      - name: Install Claude Code
+        if: steps.find-evals.outputs.skip == 'false'
+        run: |
+          sudo install -d -m 0755 /etc/apt/keyrings
+          curl -fsSL https://downloads.claude.ai/keys/claude-code.asc \
+            | sudo tee /etc/apt/keyrings/claude-code.asc > /dev/null
+          echo "deb [signed-by=/etc/apt/keyrings/claude-code.asc] https://downloads.claude.ai/claude-code/apt/stable stable main" \
+            | sudo tee /etc/apt/sources.list.d/claude-code.list
+          sudo apt-get update && sudo apt-get install -y claude-code
+
+      - name: Run evals
+        if: steps.find-evals.outputs.skip == 'false'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          for eval_file in ${{ steps.find-evals.outputs.evals }}; do
+            echo "=== Running: $eval_file ==="
+            ./run_evals.sh "$eval_file"
+          done
+
+      - name: Upload eval results
+        if: steps.find-evals.outputs.skip == 'false' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: .claude/skills/*/evals/results/
+          retention-days: 30
