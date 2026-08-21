@@ -1,0 +1,44 @@
+# Regression Detection Configuration for Red Hat Build of OpenTelemetry
+#
+# ZERO-MAINTENANCE CONFIG — everything is derived at runtime from:
+#   1. konflux-opentelemetry repo (the downstream build definition)
+#      - .gitmodules → release branch name
+#      - git submodule status → exact pinned operator & collector commits
+#      - redhat-opentelemetry-collector/manifest.yaml → component list + collector base version
+#      - bundle-patch/patch_csv.yaml → downstream operator version
+#   2. openshift-docs repo → which components are documented (glob .adoc files)
+#   3. Upstream repos (operator, collector-contrib, collector-core) → latest code on main
+#
+# You should NOT need to update this file for new releases.
+# When konflux-opentelemetry is updated for a new release, the submodule
+# refs, manifest.yaml, and .gitmodules branch all update automatically.
+
+# Repo paths — resolved in order: env var → workspace subdir
+repos:
+  konflux:
+    github: "os-observability/konflux-opentelemetry"
+    local_dir: "konflux-opentelemetry"
+  operator:
+    github: "open-telemetry/opentelemetry-operator"
+    local_dir: "opentelemetry-operator"
+  collector_contrib:
+    github: "open-telemetry/opentelemetry-collector-contrib"
+    local_dir: "opentelemetry-collector-contrib"
+  collector_core:
+    github: "open-telemetry/opentelemetry-collector"
+    local_dir: "opentelemetry-collector"
+  qe_tests:
+    github: "openshift/distributed-tracing-qe"
+    local_dir: "distributed-tracing-qe"
+  openshift_docs:
+    github: "openshift/openshift-docs"
+    github_branch: "standalone-otel-docs-main"
+    local_dir: "openshift-docs"
+
+# Doc modules follow the naming convention:
+#   otel-collector/modules/otel-{receivers,processors,exporters,connectors,extensions}-*-{type}.adoc
+docs_modules_dir: "otel-collector/modules"
+
+# Output
+output:
+  report_dir: "reports"

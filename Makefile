@@ -1,4 +1,4 @@
-.PHONY: clone-repos pull-repos remove-repos help
+.PHONY: clone-repos pull-repos remove-repos regression-detection help
 
 REPOS = \
 	open-telemetry/opentelemetry-collector \
@@ -50,9 +50,17 @@ remove-repos:
 	done
 	@echo "Done. Run 'make clone-repos' to re-clone."
 
+# Run regression detection (requires cloned repos via make clone-repos)
+# Usage: make regression-detection [METHOD=changelog]
+regression-detection:
+	@./scripts/run-regression-detection.sh $(if $(METHOD),--method $(METHOD),)
+
 help:
 	@echo "Available targets:"
-	@echo "  clone-repos    - Clone all workspace repos into this directory"
-	@echo "  pull-repos     - Pull latest in all cloned repos"
-	@echo "  remove-repos   - Delete all cloned repos to start fresh"
-	@echo "  help           - Show this help"
+	@echo "  clone-repos                     - Clone all workspace repos into this directory"
+	@echo "  pull-repos                      - Pull latest in all cloned repos"
+	@echo "  remove-repos                    - Delete all cloned repos to start fresh"
+	@echo "  regression-detection            - Run regression detection (all methods by default)"
+	@echo "                                    Use METHOD=<name> for a single method, e.g.:"
+	@echo "                                    make regression-detection METHOD=changelog"
+	@echo "  help                            - Show this help"
