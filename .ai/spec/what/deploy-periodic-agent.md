@@ -6,11 +6,13 @@
 job** in `openshift/release`. The periodic runs the Claude Code CLI with the
 chosen skill loaded as its system prompt, and nothing else.
 
-It reuses the existing Distributed-Tracing QE agent machinery
-(`openshift-observability-qe-agent`) — runner image, Google Vertex AI backend,
-and credentials — via a new, **de-gated** shared agent step that runs
-unconditionally (the qe-agent only fires after a test failure) and fetches the
-skill from this repo's raw URL by name.
+It reuses the Distributed-Tracing QE agent's Google Vertex AI backend and
+credentials via a new, **de-gated** shared agent step that runs unconditionally
+(the qe-agent only fires after a test failure). The skill is **baked into a
+purpose-built runner image** (`ci/Dockerfile`) rather than fetched over the
+network: `ci-operator` checks out this repo at `main` and rebuilds the image on
+every job run, so the skill content is a single source of truth and always
+current, with no runtime network dependency.
 
 The entire capability is **[PLANNED: TRACING-6824]**. This is internal
 workspace/CI tooling, not a customer-facing product feature, so the GA/TP
@@ -54,15 +56,18 @@ support levels do not apply.
    unconditionally, with no `has_test_failures` check. One step serves every
    skill, parameterized by the `AGENT_SKILL` environment variable.
 
-4. **[PLANNED: TRACING-6824]**: The step **fetches `SKILL.md` at runtime** from
-   this repo's raw URL
-   (`https://raw.githubusercontent.com/rhobs/redhat-build-of-opentelemetry-workspace/main/.claude/skills/$AGENT_SKILL/SKILL.md`).
-   Skills are the single source of truth in this repo and are **not vendored**
-   into `openshift/release`.
+4. **[PLANNED: TRACING-6824]**: The step **reads `SKILL.md` from the baked
+   image** at
+   `/tmp/redhat-build-of-opentelemetry-workspace/.claude/skills/$AGENT_SKILL/SKILL.md`.
+   The image is built by `ci-operator`'s `images:` phase from this repo's
+   `ci/Dockerfile` with `context_dir: .`, checked out at `main` and rebuilt every
+   run. Skills are the single source of truth in this repo and are **not
+   vendored** into `openshift/release`; there is no runtime network fetch.
 
-5. **[PLANNED: TRACING-6824]**: The step reuses the qe-agent's runner image,
-   Vertex AI configuration, and credentials: `ci-claude-code` (Vertex service
-   account) and `distributed-tracing` (Jira secrets).
+5. **[PLANNED: TRACING-6824]**: The step runs on the purpose-built runner image
+   (`ci/Dockerfile`, built as `rhosdt-skill-agent-runner`) and reuses the
+   qe-agent's Vertex AI configuration and credentials: `ci-claude-code` (Vertex
+   service account) and `distributed-tracing` (Jira secrets).
 
 ### Per-skill onboarding
 
@@ -72,8 +77,9 @@ support levels do not apply.
    user-chosen `cron`. The deployed skill is schedule-agnostic; the cadence is
    chosen at onboarding time.
 
-7. **[PLANNED: TRACING-6824]**: The skill name must match `^[A-Za-z0-9_-]+$` and
-   correspond to an existing `.claude/skills/<name>/SKILL.md` in this repo.
+7. **[PLANNED: TRACING-6824]**: The skill name must match `^[A-Za-z0-9_-]+$`
+   (which also prevents path traversal into the baked image) and correspond to
+   an existing `.claude/skills/<name>/SKILL.md` in this repo.
 
 8. **[PLANNED: TRACING-6824]**: After editing `ci-operator/config/**`, the
    generated Prow jobs are produced with `make update` and validated with
@@ -84,8 +90,12 @@ support levels do not apply.
 
 9. **[PLANNED: TRACING-6824]**: Changes are delivered as a fork-based PR to
    `openshift/release`, testable pre-merge via a `/pj-rehearse <job-name>` PR
-   comment, and require human/OWNERS review and merge — skills are fetched from
-   `main` at runtime, so the job works only once merged.
+   comment, and require human/OWNERS review and merge.
+
+10. **[PLANNED: TRACING-6824]**: A skill must be merged to this repo's `main`
+    **before** it is onboarded, because the runner image is built from `main`.
+    A `/pj-rehearse` run therefore validates only the job wiring and the presence
+    of the skill on `main` — it does not validate unmerged skill content.
 
 ## Constraints
 

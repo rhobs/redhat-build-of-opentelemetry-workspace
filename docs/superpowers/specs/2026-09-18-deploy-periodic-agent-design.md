@@ -16,7 +16,8 @@ The design reuses the existing Distributed-Tracing QE agent machinery
 (`openshift-observability-qe-agent`) — its runner image, Google Vertex AI
 backend, and credentials — but with a **new, de-gated agent step** that runs
 unconditionally (the existing qe-agent only fires after a test failure) and
-fetches the skill from this repo's raw URL by name.
+reads the skill from a purpose-built runner image that bakes in this repo's
+content (built from `ci/Dockerfile`), so there is no runtime network fetch.
 
 **Two distinct phases, with very different frequencies:**
 
@@ -38,9 +39,10 @@ missing, then never again.
   common case — one command per skill, no CI hand-authoring.
 - One command in this repo to deploy any `.claude/skills/<name>` as a scheduled
   agentic job in `openshift/release`.
-- Reuse the proven qe-agent runner image, Vertex AI config, and credentials.
-- Keep a single source of truth for skills: the agent fetches `SKILL.md` from
-  this repo at runtime; skills are not vendored into `openshift/release`.
+- Reuse the proven qe-agent Vertex AI config and credentials.
+- Keep a single source of truth for skills: the runner image is built from this
+  repo's `ci/Dockerfile` (checked out at `main`), so `SKILL.md` is baked into the
+  image and skills are not vendored into `openshift/release`.
 - Stay within existing DT-QE / openshift-observability conventions and OWNERS.
 
 ## Non-goals
@@ -53,7 +55,8 @@ missing, then never again.
 ## Chosen approach (A): one generalized agent step + a thin meta-skill
 
 Add **one** new step-registry ref to `openshift/release` that runs Claude
-unconditionally against a skill named by `AGENT_SKILL`, fetched from this repo.
+unconditionally against a skill named by `AGENT_SKILL`, read from the baked
+runner image built from this repo.
 The meta-skill in this repo is a generator + guide: for any chosen skill it
 produces a periodic-job config that runs only that step, regenerates the Prow
 jobs, and walks the user through pre-merge testing and the PR.
@@ -73,18 +76,18 @@ Rejected alternatives:
 1. **New agent step** — under the existing observability namespace:
    `ci-operator/step-registry/openshift-observability/skill-agent/`
    → ref name `openshift-observability-skill-agent` (proposed; see Open questions).
-   - `openshift-observability-skill-agent-ref.yaml`: `from:` the team runner
-     image; `credentials:` copied from the qe-agent (`ci-claude-code` → Vertex
-     SA at `/var/run/claude-code-service-account`, `distributed-tracing` → Jira
-     secrets at `/var/run/dt-secrets`); Vertex env
-     (`CLAUDE_CODE_USE_VERTEX=1`, `CLOUD_ML_REGION`,
-     `ANTHROPIC_VERTEX_PROJECT_ID`, `CLAUDE_MODEL`, `STEP_TIMEOUT_MINUTES`);
-     and `env:` declaring `AGENT_SKILL`.
+   - `openshift-observability-skill-agent-ref.yaml`: `from: rhosdt-skill-agent-runner`
+     (the image built from this repo's `ci/Dockerfile`); `credentials:` copied
+     from the qe-agent (`ci-claude-code` → Vertex SA at
+     `/var/run/claude-code-service-account`, `distributed-tracing` → Jira secrets
+     at `/var/run/dt-secrets`); Vertex env (`CLAUDE_CODE_USE_VERTEX=1`,
+     `CLOUD_ML_REGION`, `ANTHROPIC_VERTEX_PROJECT_ID`, `CLAUDE_MODEL`,
+     `STEP_TIMEOUT_MINUTES`); and `env:` declaring `AGENT_SKILL`.
    - `openshift-observability-skill-agent-commands.sh`: a **de-gated** variant
-     of the qe-agent script. Validates `AGENT_SKILL` against
-     `^[A-Za-z0-9_-]+$`, fetches
-     `https://raw.githubusercontent.com/rhobs/redhat-build-of-opentelemetry-workspace/main/.claude/skills/$AGENT_SKILL/SKILL.md`
-     (raised size cap vs. the qe-agent's 6000-token limit, `--max-redirs 0`),
+     of the qe-agent script. Validates `AGENT_SKILL` against `^[A-Za-z0-9_-]+$`
+     (also prevents path traversal), reads the skill from the baked image at
+     `/tmp/redhat-build-of-opentelemetry-workspace/.claude/skills/$AGENT_SKILL/SKILL.md`
+     (no `curl`, no size-cap/`--max-redirs` handling — the content is local),
      then runs `claude --print --dangerously-skip-permissions
      --system-prompt "$SKILL_CONTENT" ...` and emits the same cost/audit/metrics
      artifacts. **No `has_test_failures` gate** — it always runs.
@@ -95,8 +98,10 @@ Rejected alternatives:
 2. **Repo onboarding config** — base config so ci-operator knows this repo:
    `ci-operator/config/rhobs/redhat-build-of-opentelemetry-workspace/…__periodics.yaml`
    with `zz_generated_metadata` (org `rhobs`, repo
-   `redhat-build-of-opentelemetry-workspace`, branch `main`) and a minimal
-   `images:`/`resources:` skeleton.
+   `redhat-build-of-opentelemetry-workspace`, branch `main`), a minimal
+   `resources:` skeleton, and an `images.items` entry that builds the runner from
+   this repo's `ci/Dockerfile`:
+   `images.items: [{context_dir: ., dockerfile_path: ci/Dockerfile, to: rhosdt-skill-agent-runner}]`.
 
 3. **One periodic per deployed skill** — a `test:` entry in the config above:
    - `as: <skill>-agent`
@@ -117,6 +122,11 @@ Rejected alternatives:
 
 5. **Placeholder target skill** — `.claude/skills/rhosdt-release-notes-audit/SKILL.md`
    (proposed name; see "Placeholder skill" below).
+
+6. **Runner image Dockerfile** — `ci/Dockerfile` (already on `main` via PR #33):
+   bakes the Claude Code CLI plus this repo's content (including
+   `.claude/skills/`) into the `rhosdt-skill-agent-runner` image that the agent
+   step runs on.
 
 ## One-time setup (done once, ever)
 
@@ -147,8 +157,8 @@ goes directly to per-skill onboarding.
 Inputs: target `.claude/skills/<name>` and a cron schedule.
 
 1. **Validate the source skill** — confirm `.claude/skills/<name>/SKILL.md`
-   exists and `<name>` matches `^[A-Za-z0-9_-]+$` (safe as `AGENT_SKILL` and in
-   the raw URL). Warn if the file is large; no hard cap (raised in the step).
+   exists on `main` and `<name>` matches `^[A-Za-z0-9_-]+$` (safe as
+   `AGENT_SKILL` and as a path segment into the baked image).
 2. **Generate the periodic** in the onboarded repo's config (fields above).
 3. **Regenerate** — `make update` then `make checkconfig`; stop on failure.
 4. **Hand off to testing** — print the generated Prow job name and the exact
@@ -213,17 +223,15 @@ The meta-skill merges nothing. After generating files and
 2. Opens a PR against `openshift/release`.
 3. Prints the exact `/pj-rehearse periodic-ci-…` comment to run the job
    pre-merge.
-4. Tells the user a human/OWNERS review + merge is required — skills are fetched
-   from `main` at runtime, so the job only works once the repo/branch content is
-   reachable and the config is merged.
+4. Tells the user a human/OWNERS review + merge is required. Because the runner
+   image is built from this repo's `main`, the skill must already be merged to
+   `main` before onboarding: a `/pj-rehearse` run validates the job wiring and
+   the presence of the skill on `main`, not unmerged skill content.
 
 Errors stop the flow and are surfaced verbatim.
 
 ## Open questions / follow-ups
 
 - Exact new step ref name (`openshift-observability-skill-agent` proposed).
-- Raised SKILL.md size cap value for the de-gated step.
 - GitLab credential collection + mount path.
 - VPN / internal-network mechanism for the agent step.
-- Whether the raw URL must track `main` or a pinned ref/branch during
-  pre-merge `pj-rehearse` (skill content on a fork/branch vs. `main`).
