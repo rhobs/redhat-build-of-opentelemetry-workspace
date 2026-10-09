@@ -163,7 +163,7 @@ No operator changes required. The syslog exporter makes outbound connections onl
 **Support Level:** TP (not ready for GA)
 **Component name:** `webhook_event` (deprecated alias `webhookevent`; the rename landed upstream in v0.154.0)
 **Upstream Stability:** Beta (logs only)
-**Tickets:** TRACING-6641 (add to distro, In Progress — distro PR os-observability/redhat-opentelemetry-collector#153 is folded into the 3.12 component PR), TRACING-6642 (docs, In Progress)
+**Tickets:** TRACING-6641 (add to distro, In Progress — distro PR openshift/redhat-opentelemetry-collector#153 is folded into the 3.12 component PR), TRACING-6642 (docs, In Progress)
 
 The webhook event receiver is **new in 3.12**. It is not in any 3.11 build: `manifest.yaml` on `main` and on `rhosdt-3.11` has no entry, and the 3.11 release notes and docs do not mention it. This section covers the component and the operator improvement.
 

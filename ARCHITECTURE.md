@@ -83,7 +83,7 @@ graph TD
         OpUp["opentelemetry-operator<br/>(K8s operator)"]
     end
 
-    subgraph "Red Hat / os-observability"
+    subgraph "Red Hat (downstream)"
         RHCol["redhat-opentelemetry-collector<br/>(component selection via manifest.yaml)"]
         Konflux["konflux-opentelemetry<br/>(Dockerfiles, Tekton pipelines, OLM bundle)"]
         Docs["openshift-docs<br/>(product documentation)"]

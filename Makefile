@@ -6,7 +6,7 @@ REPOS = \
 	open-telemetry/opentelemetry-operator \
 	openshift/open-telemetry-opentelemetry-operator \
 	os-observability/opentelemetry-operator \
-	os-observability/redhat-opentelemetry-collector \
+	openshift/redhat-opentelemetry-collector \
 	os-observability/konflux-opentelemetry \
 	openshift/openshift-docs \
 	openshift/distributed-tracing-console-plugin \

@@ -21,7 +21,7 @@ The downstream repositories contain downstream modifications and are built from 
 | Repository | URL |
 |------------|-----|
 | opentelemetry-operator | https://github.com/openshift/open-telemetry-opentelemetry-operator |
-| redhat-opentelemetry-collector | https://github.com/os-observability/redhat-opentelemetry-collector |
+| redhat-opentelemetry-collector | https://github.com/openshift/redhat-opentelemetry-collector |
 
 ## ART & Konflux Dashboards
 
