@@ -8,7 +8,7 @@ Cross-repo workspace for Red Hat build of OpenTelemetry — shared specs, routin
 |------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
 | [opentelemetry-collector](https://github.com/open-telemetry/opentelemetry-collector)                 | Core collector                                                        |
 | [opentelemetry-collector-contrib](https://github.com/open-telemetry/opentelemetry-collector-contrib) | Collector contrib with all components                                 |
-| [redhat-opentelemetry-collector](https://github.com/os-observability/redhat-opentelemetry-collector) | Red Hat distribution of the collector                                 |
+| [redhat-opentelemetry-collector](https://github.com/openshift/redhat-opentelemetry-collector) | Red Hat distribution of the collector                                 |
 | [opentelemetry-operator](https://github.com/open-telemetry/opentelemetry-operator)                   | Kubernetes operator                                                   |
 | [open-telemetry-opentelemetry-operator](https://github.com/openshift/open-telemetry-opentelemetry-operator) | Product/downstream fork of the operator, holds `rhosdt-x.y` branches used for QE product testing |
 | [os-observability-opentelemetry-operator](https://github.com/os-observability/opentelemetry-operator) | Legacy Konflux fork of the operator (`rhosdt-3.7`–`3.11`), still used by `konflux-opentelemetry` submodules |

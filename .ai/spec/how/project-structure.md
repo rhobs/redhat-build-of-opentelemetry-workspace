@@ -8,7 +8,7 @@ This is a multi-repo workspace. Each subdirectory is an independent Git reposito
 |---|---|---|
 | `opentelemetry-collector/` | `go.opentelemetry.io/collector` | Core collector framework: pipeline engine, pdata model, confmap, config primitives, otelcol CLI |
 | `opentelemetry-collector-contrib/` | `github.com/open-telemetry/opentelemetry-collector-contrib` | ~241 community components (113 receivers, 47 exporters, 35 processors, 14 connectors, 31 extensions) |
-| `redhat-opentelemetry-collector/` | `github.com/os-observability/redhat-opentelemetry-collector` | Component selection via `manifest.yaml`, OCB-generated source in `_build/`, RPM packaging |
+| `redhat-opentelemetry-collector/` | `github.com/openshift/redhat-opentelemetry-collector` | Component selection via `manifest.yaml`, OCB-generated source in `_build/`, RPM packaging |
 | `opentelemetry-operator/` | `github.com/open-telemetry/opentelemetry-operator` | Kubernetes operator: CRDs, controllers, auto-instrumentation injection, target allocator, OpAMP bridge |
 | `konflux-opentelemetry/` | — (not a Go module) | Produktization: Dockerfiles, Tekton pipelines, bundle patching, FBC catalogs, scripts |
 | `openshift-docs/` | — (AsciiDoc) | Product documentation on branch `standalone-otel-docs-main` |
